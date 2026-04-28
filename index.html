@@ -6,20 +6,30 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>P倉寫貨系統 - 專業版</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3045/3045387.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        html { height: 100%; overflow-y: scroll; }
-        body { 
-            font-family: -apple-system, sans-serif; 
-            background: #f4f7f6; 
+        * { 
             -webkit-tap-highlight-color: transparent; 
             touch-action: manipulation;
-            min-height: 100.5vh; /* 稍微超過 100% 以便觸發隱藏工具列 */
         }
+        html { height: 100%; overflow: hidden; }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background: #f4f7f6; 
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
         .tab-active-C { background-color: #007bff !important; color: white !important; }
         .tab-active-L2PM { background-color: #28a745 !important; color: white !important; }
         .tab-active-SFI { background-color: #fd7e14 !important; color: white !important; }
+        
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
@@ -27,32 +37,44 @@
         .icon-check { display: inline-block; width: 22px; height: 22px; background-color: currentColor; -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/></svg>") no-repeat center; }
         
         #customAlert { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 3000; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 85%; max-width: 320px; text-align: center; border: 1px solid #eee; }
-        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        #overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.4); z-index: 1000; 
+            backdrop-filter: blur(2px); /* 輕微模糊背景 */
+        }
         
-        .item-code-badge { font-family: monospace; background-color: #dbeafe; color: #1d4ed8; padding: 1px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; display: inline-block; vertical-align: middle; }
-        .watch-locator-badge { font-family: monospace; background-color: #fef08a; color: #854d0e; padding: 1px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; display: inline-block; vertical-align: middle; }
-
-        /* 修改後的計算機位置：中下部 */
+        /* 計算機：加入流暢動畫與 GPU 加速 */
         #numKeypad { 
-            display: none; 
+            visibility: hidden;
+            opacity: 0;
             position: fixed; 
             top: 55%; 
             left: 50%; 
-            transform: translate(-50%, -50%); 
+            transform: translate(-50%, -45%) scale(0.95); 
             width: 95%; 
             max-width: 400px; 
-            background: #d1d5db; 
+            background: #e5e7eb; 
             z-index: 2000; 
             padding: 15px; 
-            border-radius: 24px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4); 
+            border-radius: 28px; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3); 
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, opacity;
         }
-        .key-btn { background: white; border-radius: 8px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: #374151; box-shadow: 0 2px 0 #9ca3af; -webkit-user-select: none; }
-        .key-btn:active { background: #e5e7eb; transform: translateY(1px); box-shadow: none; }
+        #numKeypad.show {
+            visibility: visible;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .key-btn { background: white; border-radius: 12px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: #374151; box-shadow: 0 2px 0 #d1d5db; -webkit-user-select: none; }
+        .key-btn:active { background: #f3f4f6; transform: translateY(1px); box-shadow: none; }
         .key-op { background: #f97316; color: white; }
         .key-confirm { background: #2563eb; color: white; }
         .key-clear { background: #94a3b8; color: white; }
 
+        .item-code-badge { font-family: monospace; background-color: #dbeafe; color: #1d4ed8; padding: 1px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; display: inline-block; }
+        .watch-locator-badge { font-family: monospace; background-color: #fef08a; color: #854d0e; padding: 1px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; display: inline-block; }
         .filter-btn-active { background-color: white !important; color: #dc2626 !important; font-weight: 900 !important; }
     </style>
 </head>
@@ -70,8 +92,8 @@
 
     <div id="numKeypad" oncontextmenu="return false;">
         <div class="flex justify-between items-center mb-3 px-2">
-            <div id="keypadDisplay" class="text-2xl font-black text-blue-600 bg-white px-4 py-2 rounded-lg flex-1 mr-2 shadow-inner text-right min-h-[48px] flex items-center justify-end">0</div>
-            <button onclick="closeKeypad()" class="bg-gray-500 text-white px-4 py-2 rounded-lg font-bold shadow-md active:bg-gray-600">關閉</button>
+            <div id="keypadDisplay" class="text-2xl font-black text-blue-600 bg-white px-4 py-2 rounded-xl flex-1 mr-2 shadow-inner text-right min-h-[52px] flex items-center justify-end border border-gray-200">0</div>
+            <button onclick="closeKeypad()" class="bg-gray-500 text-white px-4 py-3 rounded-xl font-bold shadow-md active:bg-gray-600">關閉</button>
         </div>
         <div class="grid grid-cols-4 gap-2">
             <button class="key-btn" onclick="pressKey('7')">7</button><button class="key-btn" onclick="pressKey('8')">8</button><button class="key-btn" onclick="pressKey('9')">9</button><button class="key-btn key-op" onclick="pressKey('+')">+</button>
@@ -82,80 +104,81 @@
     </div>
 
     <div class="max-w-md mx-auto">
-        <div class="mb-4 bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+        <div class="mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
             <h3 class="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest text-center">📊 系統管理</h3>
             <div class="flex flex-col gap-2">
                 <div class="grid grid-cols-2 gap-2">
-                    <label class="flex flex-col items-center justify-center bg-emerald-50 text-emerald-700 py-2 rounded-lg border border-emerald-100 cursor-pointer active:bg-emerald-100">
+                    <label class="flex flex-col items-center justify-center bg-emerald-50 text-emerald-700 py-2 rounded-xl border border-emerald-100 cursor-pointer active:bg-emerald-100 transition-colors">
                         <span class="text-[11px] font-bold">📂 P 倉</span>
                         <span id="pLabel" class="text-[9px] opacity-60">未載入</span>
                         <input type="file" id="pExcel" accept=".xlsx, .xls" class="hidden" onchange="processExcel(this, 'p')">
                     </label>
-                    <label class="flex flex-col items-center justify-center bg-purple-50 text-purple-700 py-2 rounded-lg border border-purple-100 cursor-pointer active:bg-purple-100">
+                    <label class="flex flex-col items-center justify-center bg-purple-50 text-purple-700 py-2 rounded-xl border border-purple-100 cursor-pointer active:bg-purple-100 transition-colors">
                         <span class="text-[11px] font-bold">📂 Main 倉</span>
                         <span id="mLabel" class="text-[9px] opacity-60">未載入</span>
                         <input type="file" id="mExcel" accept=".xlsx, .xls" class="hidden" onchange="processExcel(this, 'm')">
                     </label>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                    <button onclick="exportExcel()" class="bg-green-700 text-white py-2 rounded-lg font-bold text-xs shadow-sm active:bg-green-800">📊 匯出 Excel</button>
-                    <button onclick="confirmClearAll()" class="bg-red-50 text-red-500 border border-red-200 py-2 rounded-lg font-bold text-xs active:bg-red-100">🗑️ 全清空</button>
+                    <button onclick="exportExcel()" class="bg-green-700 text-white py-2 rounded-xl font-bold text-xs shadow-sm active:bg-green-800">📊 匯出 Excel</button>
+                    <button onclick="confirmClearAll()" class="bg-red-50 text-red-500 border border-red-200 py-2 rounded-xl font-bold text-xs active:bg-red-100">🗑️ 全清空</button>
                 </div>
             </div>
         </div>
 
-        <div class="flex gap-1 mb-3 sticky top-0 z-50 bg-[#f4f7f6] py-1 no-scrollbar overflow-x-auto">
-            <button onclick="setCat('L2PM')" id="tab-L2PM" class="flex-1 min-w-[70px] py-2.5 text-xs font-bold rounded-lg bg-gray-200 text-gray-500 transition-all tab-active-L2PM">📦 L2PM</button>
-            <button onclick="setCat('C')" id="tab-C" class="flex-1 min-w-[70px] py-2.5 text-xs font-bold rounded-lg bg-gray-200 text-gray-500 transition-all">❄️雪貨</button>
-            <button onclick="setCat('SFI')" id="tab-SFI" class="flex-1 min-w-[70px] py-2.5 text-xs font-bold rounded-lg bg-gray-200 text-gray-500 transition-all">💰 SFI</button>
+        <div class="flex gap-1 mb-3 sticky top-0 z-50 bg-[#f4f7f6] py-2 no-scrollbar overflow-x-auto">
+            <button onclick="setCat('L2PM')" id="tab-L2PM" class="flex-1 min-w-[70px] py-3 text-xs font-bold rounded-xl bg-gray-200 text-gray-400 transition-all tab-active-L2PM">📦 L2PM</button>
+            <button onclick="setCat('C')" id="tab-C" class="flex-1 min-w-[70px] py-3 text-xs font-bold rounded-xl bg-gray-200 text-gray-400 transition-all">❄️雪貨</button>
+            <button onclick="setCat('SFI')" id="tab-SFI" class="flex-1 min-w-[70px] py-3 text-xs font-bold rounded-xl bg-gray-200 text-gray-400 transition-all">💰 SFI</button>
         </div>
 
-        <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100 mb-4">
-            <input type="text" id="drugId" oninput="handleIdInput()" placeholder="輸入 Item Code" class="w-full p-3 mb-2 border-2 border-gray-100 rounded-lg text-lg focus:border-blue-400 outline-none uppercase font-bold text-center">
-            <div id="drugInfoBox" class="p-3 rounded-xl mb-3 transition-all bg-gray-50 border-t-4 border-gray-200 shadow-inner min-h-[120px] flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4">
+            <input type="text" id="drugId" oninput="handleIdInput()" placeholder="輸入 Item Code" class="w-full p-3 mb-3 border-2 border-gray-100 rounded-xl text-xl focus:border-blue-400 outline-none uppercase font-black text-center">
+            
+            <div id="drugInfoBox" class="p-3 rounded-2xl mb-4 transition-all bg-gray-50 border-t-4 border-gray-200 shadow-inner min-h-[120px] flex items-center justify-center overflow-hidden">
                 <div id="drugInfoContent" class="w-full flex flex-col items-center justify-center">
                     <div class="opacity-40 text-xs italic text-gray-400">等待輸入...</div>
                 </div>
             </div>
             
             <div class="flex flex-col gap-2">
-                <input type="text" id="qty" readonly onclick="openKeypad('main')" placeholder="數量" class="w-full p-3 border-2 border-gray-100 rounded-lg text-lg outline-none focus:border-blue-400 font-bold text-center bg-blue-50/20">
+                <input type="text" id="qty" readonly onclick="openKeypad('main')" placeholder="數量" class="w-full p-4 border-2 border-gray-100 rounded-xl text-2xl outline-none focus:border-blue-400 font-black text-center bg-blue-50/20">
                 <div class="flex gap-2">
-                    <button onclick="addEntry('pending')" class="w-1/4 bg-yellow-500 text-white py-3 rounded-xl font-bold text-xl active:bg-yellow-600 flex items-center justify-center shadow-md">🔍</button>
-                    <button onclick="addEntry('delivery')" class="w-3/4 py-3 bg-[#333] text-white rounded-xl font-bold text-md active:bg-black shadow-lg">加入出貨清單</button>
+                    <button onclick="addEntry('pending')" class="w-1/4 bg-yellow-500 text-white py-4 rounded-2xl font-bold text-2xl active:bg-yellow-600 flex items-center justify-center shadow-md">🔍</button>
+                    <button onclick="addEntry('delivery')" class="w-3/4 py-4 bg-[#333] text-white rounded-2xl font-bold text-lg active:bg-black shadow-lg">加入出貨清單</button>
                 </div>
             </div>
-            <div id="mainStockWarning" class="hidden mt-1 text-center text-[10px] font-bold text-red-600">⚠️ Main 倉存量不足！</div>
+            <div id="mainStockWarning" class="hidden mt-2 text-center text-[11px] font-black text-red-600">⚠️ Main 倉存量不足！</div>
         </div>
 
         <div id="listsContainer">
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-5 border border-gray-100">
-                <div class="p-2 bg-gray-800 text-white font-bold flex items-center gap-2 text-xs">📋 出貨清單 <span id="count-delivery" class="ml-auto bg-white text-gray-800 px-2 rounded-full text-[10px]">0</span></div>
+            <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-5 border border-gray-100">
+                <div class="p-3 bg-gray-800 text-white font-bold flex items-center gap-2 text-xs">📋 出貨清單 <span id="count-delivery" class="ml-auto bg-white text-gray-800 px-2.5 py-0.5 rounded-full text-[10px]">0</span></div>
                 <table class="w-full text-left border-collapse table-fixed" id="table-delivery"><tbody class="divide-y divide-gray-50 text-[12px]"></tbody></table>
-                <div id="delivery-expand-btn" class="hidden p-2 text-center border-t border-gray-50"><button onclick="toggleExpand('delivery')" id="btn-expand-delivery" class="text-[10px] font-bold text-blue-500 py-1 px-4 border border-blue-200 rounded-full">展開全部 ▽</button></div>
+                <div id="delivery-expand-btn" class="hidden p-2 text-center border-t border-gray-50"><button onclick="toggleExpand('delivery')" id="btn-expand-delivery" class="text-[10px] font-bold text-blue-500 py-1.5 px-5 border border-blue-200 rounded-full">展開全部 ▽</button></div>
             </div>
 
-            <div class="bg-yellow-50 rounded-xl shadow-sm overflow-hidden mb-5 border border-yellow-200">
-                <div class="p-2 bg-yellow-500 text-white font-bold flex items-center gap-2 text-xs">⏳ 待查機清單 <span id="count-pending" class="ml-auto bg-white text-yellow-500 px-2 rounded-full text-[10px]">0</span></div>
+            <div class="bg-yellow-50 rounded-2xl shadow-sm overflow-hidden mb-5 border border-yellow-200">
+                <div class="p-3 bg-yellow-500 text-white font-bold flex items-center gap-2 text-xs">⏳ 待查機清單 <span id="count-pending" class="ml-auto bg-white text-yellow-500 px-2.5 py-0.5 rounded-full text-[10px]">0</span></div>
                 <table class="w-full text-left border-collapse table-fixed" id="table-pending"><tbody class="divide-y divide-yellow-100 text-[12px]"></tbody></table>
-                <div id="pending-expand-btn" class="hidden p-2 text-center border-t border-yellow-100"><button onclick="toggleExpand('pending')" id="btn-expand-pending" class="text-[10px] font-bold text-yellow-600 py-1 px-4 border border-yellow-300 rounded-full">展開全部 ▽</button></div>
+                <div id="pending-expand-btn" class="hidden p-2 text-center border-t border-yellow-100"><button onclick="toggleExpand('pending')" id="btn-expand-pending" class="text-[10px] font-bold text-yellow-600 py-1.5 px-5 border border-yellow-300 rounded-full">展開全部 ▽</button></div>
             </div>
 
-            <div class="bg-red-50 rounded-xl shadow-sm overflow-hidden mb-5 border border-red-200">
-                <div class="p-2 bg-red-600 text-white font-bold">
-                    <div class="flex items-center gap-2 text-xs mb-1.5">🚨 觀察清單 <span id="count-watch" class="ml-auto bg-white text-red-600 px-2 rounded-full text-[10px]">0</span></div>
-                    <div class="flex flex-col gap-1.5 bg-red-700/50 p-1.5 rounded-lg">
+            <div class="bg-red-50 rounded-2xl shadow-sm overflow-hidden mb-5 border border-red-200">
+                <div class="p-3 bg-red-600 text-white font-bold">
+                    <div class="flex items-center gap-2 text-xs mb-2">🚨 觀察清單 <span id="count-watch" class="ml-auto bg-white text-red-600 px-2.5 py-0.5 rounded-full text-[10px]">0</span></div>
+                    <div class="flex flex-col gap-2 bg-red-700/40 p-2 rounded-xl">
                         <div class="flex gap-1 items-center">
-                            <span class="text-[8px] text-red-100 px-1 shrink-0">比例:</span>
-                            <button onclick="setThreshold(0.1)" id="btn-t-0.1" class="flex-1 py-1 text-[9px] rounded bg-red-800/50 text-white">0.1</button>
-                            <button onclick="setThreshold(0.4)" id="btn-t-0.4" class="flex-1 py-1 text-[9px] rounded bg-red-800/50 text-white">0.4</button>
-                            <button onclick="setThreshold(0.5)" id="btn-t-0.5" class="flex-1 py-1 text-[9px] rounded bg-red-800/50 text-white">0.5</button>
-                            <button onclick="setThreshold(0.7)" id="btn-t-0.7" class="flex-1 py-1 text-[9px] rounded bg-red-800/50 text-white">0.7</button>
+                            <span class="text-[9px] text-red-100 px-1 shrink-0">比例:</span>
+                            <button onclick="setThreshold(0.1)" id="btn-t-0.1" class="flex-1 py-1.5 text-[10px] rounded-lg bg-red-800/40 text-white">0.1</button>
+                            <button onclick="setThreshold(0.4)" id="btn-t-0.4" class="flex-1 py-1.5 text-[10px] rounded-lg bg-red-800/40 text-white">0.4</button>
+                            <button onclick="setThreshold(0.5)" id="btn-t-0.5" class="flex-1 py-1.5 text-[10px] rounded-lg bg-red-800/40 text-white">0.5</button>
+                            <button onclick="setThreshold(0.7)" id="btn-t-0.7" class="flex-1 py-1.5 text-[10px] rounded-lg bg-red-800/40 text-white">0.7</button>
                         </div>
                         <div class="flex gap-1 items-center">
-                            <span class="text-[8px] text-red-100 px-1 shrink-0">類別:</span>
-                            <button onclick="setThreshold('ALL_C')" id="btn-t-ALL_C" class="flex-1 py-1 text-[9px] rounded bg-red-800/50 text-white">全部雪貨</button>
-                            <button onclick="setThreshold('ALL_SFI')" id="btn-t-ALL_SFI" class="flex-1 py-1 text-[9px] rounded bg-red-800/50 text-white">全部 SFI</button>
+                            <span class="text-[9px] text-red-100 px-1 shrink-0">類別:</span>
+                            <button onclick="setThreshold('ALL_C')" id="btn-t-ALL_C" class="flex-1 py-1.5 text-[10px] rounded-lg bg-red-800/40 text-white">全部雪貨</button>
+                            <button onclick="setThreshold('ALL_SFI')" id="btn-t-ALL_SFI" class="flex-1 py-1.5 text-[10px] rounded-lg bg-red-800/40 text-white">全部 SFI</button>
                         </div>
                     </div>
                 </div>
@@ -165,6 +188,7 @@
     </div>
 
     <script>
+        // 資料結構保持不變
         const drugMaster = {
             "C": {
 "FILG04": ["FILGRASTIM (NIVESTIM) PREFILLED SYRINGE 30MU (300MCG)/0.5ML", "C1.A.1", "900"],
@@ -1153,7 +1177,6 @@
 "ZIPR02": ["ZIPRASIDONE (HCL) CAPSULE 40MG", "E3B.6", "90"],
 "ZOLE01": ["ZOLEDRONIC ACID (ZOMETA (OR EQUIV)) INFUSION 0.8MG/ML 5ML", "B2C.2", "200"],
 "ZUCL07": ["ZUCLOPENTHIXOL DECANOATE IM INJECTION 200MG/ML 1ML", "B2C.4", "10"],
-
             },
             "SFI": {
 "ALTE01": ["ALTEPLASE (ACTILYSE) INJECTION 50MG", "A1D.1", "30"],
@@ -1164,7 +1187,7 @@
 "IBUP04": ["IBUPROFEN INJECTION 5MG/ML 2ML", "A5B.2", "3"],
 "TACR07": ["TACROLIMUS INFUSION 5MG/ML 1ML", "A6D.7", "0"],
 "ZOLE02": ["ZOLEDRONIC ACID (ACLASTA) INFUSION 50MCG/ML 100ML", "B2B.3", "2"],
-"AKYN01": ["AKYNZEO (OR EQUIV) CAPSULE 300MG/0.5MG", "B3A.6", "200"],
+"AKYN01": ["AKYNZEO (OR EQUIV) CAPSULE 300MG/0.5MG", "B3A.6", "200", "120"],
 "MYCO05": ["MYCOPHENOLATE MOFETIL (CELLCEPT) CAPSULE 250MG", "C6D.1", "1500"],
 "ENTE01": ["ENTECAVIR TABLET 0.5MG", "F3A.6", "20000"],
 "DINO08": ["DINOPROSTONE CR PESSARY 10MG", "FR.A.1", "10"],
@@ -1351,9 +1374,6 @@
         }
 
         window.onload = function() {
-            // 自動隱藏工具列
-            setTimeout(() => { window.scrollTo(0, 1); }, 100);
-            
             const saved = localStorage.getItem('p_store_stable_v3');
             if (saved) {
                 const data = JSON.parse(saved);
@@ -1367,25 +1387,34 @@
             setThreshold(watchThreshold); renderTables();
         };
 
+        // --- 優化的彈窗控制 ---
         function openKeypad(target) {
             keypadTarget = target;
             let currentVal = "";
             if(target === 'main') currentVal = document.getElementById('qty').value;
             else if (typeof target === 'string' && target.startsWith('watch-qty-')) currentVal = document.getElementById(target).value;
             else { const r = records.find(i => i.ts === target); if(r) currentVal = r.qty.toString(); }
+            
             keypadString = (currentVal === "" || currentVal === "0") ? "0" : currentVal.toString();
             updateKeypadDisplay();
+            
             document.getElementById('overlay').style.display = 'block';
-            document.getElementById('numKeypad').style.display = 'block';
+            // 使用 class 切換動畫
+            setTimeout(() => document.getElementById('numKeypad').classList.add('show'), 10);
         }
 
         function closeKeypad() {
-            document.getElementById('numKeypad').style.display = 'none';
-            if(document.getElementById('customAlert').style.display !== 'block') document.getElementById('overlay').style.display = 'none';
+            document.getElementById('numKeypad').classList.remove('show');
+            setTimeout(() => {
+                if(!document.getElementById('numKeypad').classList.contains('show')) {
+                    if(document.getElementById('customAlert').style.display !== 'block') document.getElementById('overlay').style.display = 'none';
+                }
+            }, 250);
             keypadTarget = null;
         }
 
         function updateKeypadDisplay() { document.getElementById('keypadDisplay').innerText = keypadString; }
+        
         function pressKey(key) {
             if (key === 'C') keypadString = "0";
             else if (key === 'Backspace') keypadString = keypadString.length > 1 ? keypadString.slice(0, -1) : "0";
@@ -1395,7 +1424,7 @@
 
         function confirmKeypad() {
             try {
-                const result = eval(keypadString.replace(/×/g, '*').replace(/\*/g, '*'));
+                const result = eval(keypadString.replace(/×/g, '*'));
                 const finalVal = parseFloat(result.toFixed(2));
                 if(keypadTarget === 'main') { document.getElementById('qty').value = finalVal; handleQtyChange(); }
                 else if (typeof keypadTarget === 'string' && keypadTarget.startsWith('watch-qty-')) document.getElementById(keypadTarget).value = finalVal;
@@ -1409,6 +1438,63 @@
 
         function closeAllModals() { closeAlert(); closeKeypad(); }
 
+        // --- 優化的渲染函式 (使用 RequestAnimationFrame 與 String Builder) ---
+        function renderTables() {
+            const existingInDelivery = new Set(records.filter(r => r.type === 'delivery').map(r => cleanId(r.id)));
+            let watchList = [];
+            
+            if (isInventoryLoaded) {
+                for (let c in drugMaster) {
+                    for (let id in drugMaster[c]) {
+                        const cid = cleanId(id);
+                        if (existingInDelivery.has(cid) || excludedWatch.has(cid)) continue;
+                        const info = drugMaster[c][id], monthly = parseFloat(info[2]), onHand = pInventory[cid] ?? 0;
+                        const ratio = monthly > 0 ? (onHand / monthly).toFixed(2) : (onHand > 0 ? "N/A" : 0);
+                        let show = false;
+                        if (watchThreshold === 'ALL_C') { if (c === 'C') show = true; }
+                        else if (watchThreshold === 'ALL_SFI') { if (c === 'SFI') show = true; }
+                        else { if (c === 'L2PM' && monthly > 0 && (onHand / monthly) <= watchThreshold) show = true; }
+                        if (show) watchList.push({ id, cat: c, name: info[0], locator: info[1], monthly, onHand, ratio });
+                    }
+                }
+            }
+            
+            watchList.sort((a, b) => (catOrder[a.cat] - catOrder[b.cat]) || (getLocatorWeight(a.cat, a.locator) - getLocatorWeight(b.cat, b.locator)));
+
+            requestAnimationFrame(() => {
+                ['delivery', 'pending', 'watch'].forEach(t => {
+                    const tbody = document.querySelector(`#table-${t} tbody`);
+                    let items = t === 'watch' ? watchList : records.filter(r => r.type === t);
+                    document.getElementById(`count-${t}`).innerText = items.length;
+                    
+                    if ((t === 'delivery' || t === 'pending') && items.length > 3) {
+                        const btnWrap = document.getElementById(`${t}-expand-btn`);
+                        btnWrap.classList.remove('hidden');
+                        document.getElementById(`btn-expand-${t}`).innerText = expandStates[t] ? "收起 △" : `展開 (${items.length}) ▽`;
+                        if (!expandStates[t]) items = items.slice(0, 3);
+                    } else if (t !== 'watch') {
+                        const eb = document.getElementById(`${t}-expand-btn`);
+                        if(eb) eb.classList.add('hidden');
+                    }
+
+                    // 使用 Array Join 提升效能
+                    const htmlRows = items.map(r => {
+                        const cid = cleanId(r.id), pS = pInventory[cid] ?? (isInventoryLoaded ? 0 : '--'), mS = mInventory[cid] ?? (isInventoryLoaded ? 0 : '--');
+                        const usage = r.usage || (r.monthly) || '0', isS = isInventoryLoaded && parseFloat(r.qty) > parseFloat(mS);
+                        
+                        if (t === 'watch') {
+                            const ratioTag = (watchThreshold === 'ALL_C' || watchThreshold === 'ALL_SFI') ? `<span class="bg-red-100 text-red-600 px-1 rounded font-bold ml-1 text-[9px]">${r.ratio}x</span>` : '';
+                            return `<tr class="bg-white/40"><td class="p-2 text-center w-8">${catIcons[r.cat]}</td><td class="p-2"><div class="font-bold leading-tight text-gray-800 mb-1 text-[12px]">${r.name}</div><div class="flex flex-col gap-1"><div class="flex items-center gap-1"><span class="item-code-badge">${r.id}</span><span class="watch-locator-badge">📍 ${r.locator}</span></div><div class="flex flex-wrap items-center gap-2"><span class="text-[9px] font-bold text-blue-700">📊 ${usage}</span><span class="text-[9px] font-bold text-emerald-600">🗑️ ${pS}</span><span class="text-[9px] font-bold text-purple-600">🏥 ${mS}</span>${ratioTag}${isS ? '<span class="text-red-600 font-black text-[9px]">!缺</span>' : ''}</div></div></td><td class="p-2 text-right w-36"><div class="flex gap-1 justify-end items-center"><input type="text" id="watch-qty-${cid}" readonly onclick="openKeypad('watch-qty-${cid}')" class="w-10 h-7 text-center font-bold bg-white border border-red-200 rounded text-[10px] outline-none"><button onclick="addEntry('delivery','${r.id}', document.getElementById('watch-qty-${cid}').value)" class="bg-red-600 text-white px-2 h-7 rounded text-[9px] font-bold">出貨</button><button onclick="delWatch('${r.id}')" class="text-gray-300 ml-1"><i class="icon-trash"></i></button></div></td></tr>`;
+                        }
+                        return `<tr><td class="p-2 text-center w-8">${catIcons[r.cat]}</td><td class="p-2"><div class="font-bold text-[12px] leading-tight text-gray-800 mb-1">${r.name}</div><div class="flex items-center gap-2"><span class="item-code-badge">${r.id}</span><div class="flex flex-wrap gap-2 text-[8px] font-bold"><span class="text-blue-500">📍 ${r.locator}</span><span class="text-blue-700">📊 ${usage}</span><span class="text-emerald-600">🗑️ ${pS}</span><span class="text-purple-600">🏥 ${mS}</span>${isS ? '<span class="text-red-500 font-black">!缺</span>' : ''}</div></div></td><td class="p-2 w-16"><input type="text" readonly onclick="openKeypad(${r.ts})" value="${r.qty}" class="w-full text-center font-bold bg-white border border-gray-200 rounded-lg ${isS ? 'text-red-600 border-red-200' : ''}"></td><td class="p-2 text-center w-10"><div class="flex flex-col items-center gap-2">${t === 'pending' ? `<button onclick="move(${r.ts})" class="text-green-600"><i class="icon-check"></i></button>` : ''}<button onclick="delEntry(${r.ts})" class="text-red-300"><i class="icon-trash"></i></button></div></td></tr>`;
+                    }).join('');
+                    
+                    tbody.innerHTML = htmlRows || `<tr><td colspan="4" class="p-4 text-center text-gray-300 text-[10px] italic">目前無項目</td></tr>`;
+                });
+            });
+        }
+
+        // --- 其餘邏輯保持不變 ---
         function getLocatorWeight(cat, locator) {
             const loc = (locator || "").toUpperCase();
             if (cat === 'C') { if (loc.startsWith('R8')) return 10; if (loc.startsWith('R1')) return 20; if (loc.startsWith('R2')) return 30; if (loc.startsWith('R3')) return 40; if (loc.startsWith('C')) return 50; }
@@ -1452,7 +1538,7 @@
                 const cid = cleanId(matched.originalId), p = pInventory[cid] ?? (isInventoryLoaded ? 0 : '--'), m = mInventory[cid] ?? (isInventoryLoaded ? 0 : '--');
                 const hasPack = matched.info.length > 3, packText = hasPack ? matched.info[3].split(' ')[0] : "";
                 box.style.borderTopColor = catColors[matched.cat];
-                content.innerHTML = `<div class="w-full flex flex-col items-center"><div class="font-black text-[#1e40af] text-[16px] leading-tight text-center whitespace-normal mb-3 w-full">${matched.info[0]}</div><div class="w-full space-y-2"><div class="grid ${hasPack ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-1">${hasPack ? `<div class="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-center gap-2"><span class="text-[12px]">📤</span><span class="text-[12px] font-black text-gray-500 truncate">${packText}</span></div>` : ''}<div class="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-center gap-2"><span class="text-[12px]">📍</span><span class="text-[14px] font-black text-blue-600 truncate">${matched.info[1]}</span></div></div><div class="grid grid-cols-3 gap-2 px-1"><div class="bg-blue-50/50 p-2 rounded-lg border border-blue-100 flex flex-col items-center justify-center"><span class="text-[10px] text-blue-500 font-bold">📊 用量</span><span class="text-[18px] font-black text-blue-700">${matched.info[2]}</span></div><div class="bg-white p-2 rounded-lg border border-gray-100 flex flex-col items-center justify-center"><span class="text-[10px] text-gray-400 font-bold">🗑️ P倉</span><span class="text-[18px] font-black text-emerald-600">${p}</span></div><div class="bg-white p-2 rounded-lg border border-gray-100 flex flex-col items-center justify-center"><span class="text-[10px] text-gray-400 font-bold">🏥 Main</span><span class="text-[18px] font-black text-purple-600">${m}</span></div></div></div></div>`;
+                content.innerHTML = `<div class="w-full flex flex-col items-center animate-in fade-in duration-300"><div class="font-black text-[#1e40af] text-[18px] leading-tight text-center mb-3 w-full">${matched.info[0]}</div><div class="w-full space-y-2"><div class="grid ${hasPack ? 'grid-cols-2' : 'grid-cols-1'} gap-2 px-1">${hasPack ? `<div class="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-center gap-2"><span class="text-[12px]">📤</span><span class="text-[12px] font-black text-gray-500">${packText}</span></div>` : ''}<div class="bg-white p-2 rounded-lg border border-gray-100 flex items-center justify-center gap-2"><span class="text-[12px]">📍</span><span class="text-[14px] font-black text-blue-600">${matched.info[1]}</span></div></div><div class="grid grid-cols-3 gap-2 px-1"><div class="bg-blue-50/50 p-2 rounded-lg border border-blue-100 flex flex-col items-center"><span class="text-[10px] text-blue-500 font-bold">📊 用量</span><span class="text-[18px] font-black text-blue-700">${matched.info[2]}</span></div><div class="bg-white p-2 rounded-lg border border-gray-100 flex flex-col items-center"><span class="text-[10px] text-gray-400 font-bold">🗑️ P倉</span><span class="text-[18px] font-black text-emerald-600">${p}</span></div><div class="bg-white p-2 rounded-lg border border-gray-100 flex flex-col items-center"><span class="text-[10px] text-gray-400 font-bold">🏥 Main</span><span class="text-[18px] font-black text-purple-600">${m}</span></div></div></div></div>`;
             } else { box.style.borderTopColor = "#e5e7eb"; content.innerHTML = `<div class="opacity-40 italic text-[11px] text-gray-400">${idInput ? '⚠️ 找不到藥物' : '等待輸入代碼...'}</div>`; }
         }
 
@@ -1500,63 +1586,12 @@
             watchThreshold = val; 
             [0.1, 0.4, 0.5, 0.7, 'ALL_C', 'ALL_SFI'].forEach(v => {
                 const btn = document.getElementById(`btn-t-${v}`);
-                if (btn) btn.className = v === val ? "flex-1 py-1 text-[9px] rounded filter-btn-active" : "flex-1 py-1 text-[9px] rounded bg-red-800/50 text-white";
+                if (btn) btn.className = v === val ? "flex-1 py-1.5 text-[10px] rounded-lg filter-btn-active" : "flex-1 py-1.5 text-[10px] rounded-lg bg-red-800/40 text-white";
             });
             renderTables(); save(); 
         }
 
         function toggleExpand(type) { expandStates[type] = !expandStates[type]; renderTables(); }
-
-        function renderTables() {
-            const existingInDelivery = new Set(records.filter(r => r.type === 'delivery').map(r => cleanId(r.id)));
-            let watchList = [];
-            if (isInventoryLoaded) {
-                for (let c in drugMaster) {
-                    for (let id in drugMaster[c]) {
-                        const cid = cleanId(id);
-                        if (existingInDelivery.has(cid) || excludedWatch.has(cid)) continue;
-                        const info = drugMaster[c][id], monthly = parseFloat(info[2]), onHand = pInventory[cid] ?? 0;
-                        const ratio = monthly > 0 ? (onHand / monthly).toFixed(2) : (onHand > 0 ? "N/A" : 0);
-                        let show = false;
-                        if (watchThreshold === 'ALL_C') { if (c === 'C') show = true; }
-                        else if (watchThreshold === 'ALL_SFI') { if (c === 'SFI') show = true; }
-                        else { if (c === 'L2PM' && monthly > 0 && (onHand / monthly) <= watchThreshold) show = true; }
-                        if (show) watchList.push({ id, cat: c, name: info[0], locator: info[1], monthly, onHand, ratio });
-                    }
-                }
-            }
-            watchList.sort((a, b) => (catOrder[a.cat] - catOrder[b.cat]) || (getLocatorWeight(a.cat, a.locator) - getLocatorWeight(b.cat, b.locator)) || a.locator.localeCompare(b.locator, undefined, {numeric: true}));
-            
-            ['delivery', 'pending', 'watch'].forEach(t => {
-                const tbody = document.querySelector(`#table-${t} tbody`);
-                let items = t === 'watch' ? watchList : records.filter(r => r.type === t);
-                document.getElementById(`count-${t}`).innerText = items.length;
-                
-                if ((t === 'delivery' || t === 'pending') && items.length > 3) {
-                    const btnWrap = document.getElementById(`${t}-expand-btn`);
-                    const btn = document.getElementById(`btn-expand-${t}`);
-                    btnWrap.classList.remove('hidden');
-                    btn.innerText = expandStates[t] ? "收起 △" : `展開 (${items.length}) ▽`;
-                    if (!expandStates[t]) items = items.slice(0, 3);
-                } else if (t !== 'watch') {
-                    const btnWrap = document.getElementById(`${t}-expand-btn`);
-                    if(btnWrap) btnWrap.classList.add('hidden');
-                }
-
-                tbody.innerHTML = items.map(r => {
-                    const cid = cleanId(r.id), pS = pInventory[cid] ?? (isInventoryLoaded ? 0 : '--'), mS = mInventory[cid] ?? (isInventoryLoaded ? 0 : '--');
-                    const usage = r.usage || (r.monthly) || '0', isS = isInventoryLoaded && parseFloat(r.qty) > parseFloat(mS);
-                    if (t === 'watch') {
-                        const showRatioTag = (watchThreshold === 'ALL_C' || watchThreshold === 'ALL_SFI');
-                        const ratioTag = showRatioTag ? `<span class="bg-red-100 text-red-600 px-1 rounded font-bold ml-1 text-[9px]">${r.ratio}x</span>` : '';
-                        return `<tr class="bg-white/40 text-[11px]"><td class="p-2 text-center w-8">${catIcons[r.cat]}</td><td class="p-2"><div class="font-bold leading-tight text-gray-800 mb-1 whitespace-normal text-[12px]">${r.name}</div><div class="flex flex-col gap-1"><div class="flex items-center gap-1"><span class="item-code-badge">${r.id}</span><span class="watch-locator-badge">📍 ${r.locator}</span></div><div class="flex flex-wrap items-center gap-2"><span class="text-[9px] font-bold text-blue-700">📊 ${usage}</span><span class="text-[9px] font-bold text-emerald-600">🗑️ ${pS}</span><span class="text-[9px] font-bold text-purple-600">🏥 ${mS}</span>${ratioTag}${isS ? '<span class="text-red-600 font-black text-[9px]">!缺</span>' : ''}</div></div></td><td class="p-2 text-right w-36"><div class="flex gap-1 justify-end items-center"><input type="text" id="watch-qty-${cid}" readonly onclick="openKeypad('watch-qty-${cid}')" class="w-10 h-7 text-center font-bold bg-white border border-red-200 rounded text-[10px] outline-none"><button onclick="addEntry('delivery','${r.id}', document.getElementById('watch-qty-${cid}').value)" class="bg-red-600 text-white px-2 h-7 rounded text-[9px] font-bold">出貨</button><button onclick="delWatch('${r.id}')" class="text-gray-300 ml-1"><i class="icon-trash"></i></button></div></td></tr>`;
-                    }
-                    const normalInfoLine = `<div class="flex flex-wrap gap-2 text-[8px] font-bold"><span class="text-blue-500">📍 ${r.locator}</span><span class="text-blue-700">📊 ${usage}</span><span class="text-emerald-600">🗑️ ${pS}</span><span class="text-purple-600">🏥 ${mS}</span>${isS ? '<span class="text-red-500 font-black">!缺</span>' : ''}</div>`;
-                    return `<tr><td class="p-2 text-center w-8">${catIcons[r.cat]}</td><td class="p-2"><div class="font-bold text-[12px] leading-tight text-gray-800 mb-1 whitespace-normal">${r.name}</div><div class="flex items-center gap-2"><span class="item-code-badge">${r.id}</span>${normalInfoLine}</div></td><td class="p-2 w-16"><input type="text" readonly onclick="openKeypad(${r.ts})" value="${r.qty}" class="w-full text-center font-bold bg-white border border-gray-200 rounded ${isS ? 'text-red-600 border-red-200' : ''}"></td><td class="p-2 text-center w-10"><div class="flex flex-col items-center gap-2">${t === 'pending' ? `<button onclick="move(${r.ts})" class="text-green-600"><i class="icon-check"></i></button>` : ''}<button onclick="delEntry(${r.ts})" class="text-red-300"><i class="icon-trash"></i></button></div></td></tr>`;
-                }).join('');
-                if (items.length === 0) tbody.innerHTML = `<tr><td colspan=\"4\" class=\"p-4 text-center text-gray-300 text-[10px] italic\">目前無項目</td></tr>`;
-            });
-        }
 
         function handleQtyChange() {
             const id = cleanId(document.getElementById('drugId').value), qty = parseFloat(document.getElementById('qty').value || 0), mStock = mInventory[id] || 0;
@@ -1572,7 +1607,8 @@
 
         function closeAlert() { document.getElementById('customAlert').style.display = 'none'; if(!keypadTarget) document.getElementById('overlay').style.display = 'none'; }
         function updateLabel(type) { const count = Object.keys(type === 'p' ? pInventory : mInventory).length; document.getElementById(type + 'Label').innerText = count > 0 ? `已載入 ${count} 項` : '未載入'; }
-        function confirmClearAll() { showAlert("⚠️ 注意：這將清空所有清單！", () => { records = []; pInventory = {}; mInventory = {}; excludedWatch = new Set(); isInventoryLoaded = false; updateLabel('p'); updateLabel('m'); renderTables(); save(); }); }
+        function confirmClearAll() { showAlert("⚠️ 注意：這將清空所有資料！", () => { records = []; pInventory = {}; mInventory = {}; excludedWatch = new Set(); isInventoryLoaded = false; updateLabel('p'); updateLabel('m'); renderTables(); save(); localStorage.clear(); }); }
+        
         function exportExcel() {
             const deliveryItems = records.filter(r => r.type === 'delivery');
             if (deliveryItems.length === 0) return showAlert("❌ 出貨清單是空的");
