@@ -1,0 +1,15 @@
+{
+  "name": "P倉寫貨系統",
+  "short_name": "P倉系統",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3045/3045387.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
